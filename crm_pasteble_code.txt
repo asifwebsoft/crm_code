@@ -186,3 +186,21 @@ login button के नीचे add करो:
     );
   }
 });
+........................................................
+<div
+  style={{
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 15,
+  }}
+>
+  Password must contain:
+  <br />
+  • Minimum 8 characters
+  <br />
+  • 1 Capital letter
+  <br />
+  • 1 Number
+  <br />
+  • 1 Special character
+</div>
