@@ -112,7 +112,7 @@ export default function Topbar() {
         marginLeft: 230,
         background: "#0f172a", // 🔥 DARK THEME
         display: "flex",
-        justifyContent: "flex-end",
+        justifyContent: "space-between",
         alignItems: "center",
         padding: "0 20px",
         boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
@@ -121,6 +121,16 @@ export default function Topbar() {
         zIndex: 100,
       }}
     >
+       {/* 🏢 COMPANY NAME */}
+        <div
+          style={{
+            color: "#fff",
+            fontSize: 20,
+            fontWeight: "bold",
+          }}
+        >
+        {company ? `${company} CRM` : "CRM"}
+      </div>
       {/* 🔔 Notification */}
         <div style={{ position: "relative", marginRight: 25 }}>
   <Dropdown overlay={notificationDropdown} trigger={["click"]}>
