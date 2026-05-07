@@ -204,3 +204,42 @@ login button के नीचे add करो:
   <br />
   • 1 Special character
 </div>
+
+................................................................
+ <Input.Password
+          placeholder="Password"
+          style={{ marginBottom: 12,
+            border: passwordError
+            ? "1px solid red"
+            : "",
+           }}
+          
+          onChange={(e) =>
+            setForm({
+              ...form,
+              password: e.target.value,
+            });
+            //remove red border while typing
+              setPasswordError(false);
+            }
+        />
+        {showRules && (
+         <div
+            style={{
+              fontSize: 12,
+              color: "#f30b0b",
+              marginBottom: 15,
+            }}
+          >
+            Password must contain:
+            <br />
+            • Minimum 8 characters
+            <br />
+            • 1 Capital letter
+            <br />
+            • 1 Number
+            <br />
+            • 1 Special character
+          </div>
+        )}
+
