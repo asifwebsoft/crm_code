@@ -1,269 +1,157 @@
-Step 1
-SignupSerializer के अंदर ये function add करो:
-
-def validate_password(self, value):
-
-    # 🔥 Minimum 8 chars
-    if len(value) < 8:
-        raise serializers.ValidationError(
-            "Password must be at least 8 characters"
-        )
-
-    # 🔥 1 uppercase
-    if not re.search(r"[A-Z]", value):
-        raise serializers.ValidationError(
-            "Password must contain 1 capital letter"
-        )
-
-    # 🔥 1 number
-    if not re.search(r"\d", value):
-        raise serializers.ValidationError(
-            "Password must contain 1 number"
-        )
-
-    # 🔥 1 special char
-    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", value):
-        raise serializers.ValidationError(
-            "Password must contain 1 special character"
-        )
-
-    return value
-.......................................................................
-
-Step 2
-accounts/views.py
-imports में add करो:
-
-from django.core.mail import send_mail
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode
-from django.utils.encoding import force_bytes
-
-bottom me add
-# ✅ FORGOT PASSWORD
-class ForgotPasswordView(APIView):
-
-    def post(self, request):
-
-        email = request.data.get("email")
-
-        user = User.objects.filter(email=email).first()
-
-        if not user:
-            return Response(
-                {"error": "Email not found"},
-                status=404
-            )
-
-        token = default_token_generator.make_token(user)
-
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-
-        reset_link = f"http://localhost:3000/reset-password/{uid}/{token}"
-
-        send_mail(
-            "Reset Your Password",
-            f"Click here to reset password:\n{reset_link}",
-            "noreply@crm.com",
-            [email],
-            fail_silently=False,
-        )
-
-        return Response({
-            "message": "Reset link sent to email"
-        })
-
-.......................................................................
-Step 3
-accounts/urls.py
-import में add करो:
-
-ForgotPasswordView
-path(
-    "forgot-password/",
-    ForgotPasswordView.as_view()
-),
-......................................................................
-Step 4 Frontend
-pages/forgot-password.js new file
-
-import { useState } from "react";
-import { Card, Input, Button, message } from "antd";
+import { useEffect, useState } from "react";
+import { Layout, Badge, Dropdown, List, Tag } from "antd";
+import { useRouter } from "next/router";
+import {
+  BellOutlined,
+  UserOutlined,
+  LogoutOutlined,
+} from "@ant-design/icons";
 import API from "../services/api";
 
-export default function ForgotPassword() {
+const { Header } = Layout;
 
-  const [email, setEmail] = useState("");
+export default function Topbar() {
+  const router = useRouter();
+  const [notifications, setNotifications] = useState([]);
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("");
+  const [company, setCompany] = useState("");
 
-  const handleSubmit = () => {
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setName(localStorage.getItem("name"));
+      setRole(localStorage.getItem("role"));
+      setCompany(localStorage.getItem("company"));
+    }
 
-    API.post("/accounts/forgot-password/", {
-      email,
-    })
-      .then(() => {
-        message.success("Reset link sent");
-      })
-      .catch(() => {
-        message.error("Email not found");
-      });
+    API.get("/leads/notifications/")
+      .then((res) => setNotifications(res.data.data || []))
+      .catch(() => {});
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = "/login";
   };
 
-  return (
+  // 🔥 WhatsApp-style notification UI
+  const notificationDropdown = (
     <div
       style={{
-        display: "flex",
-        justifyContent: "center",
-        marginTop: 100,
+        width: 320,
+        maxHeight: 400,
+        overflowY: "auto",
+        background: "#01050f",
+        borderRadius: 10,
+        padding: 10,
       }}
     >
-      <Card title="Forgot Password" style={{ width: 350 }}>
-
-        <Input
-          placeholder="Enter Email"
-          value={email}
-          onChange={(e) =>
-            setEmail(e.target.value)
-          }
-          style={{ marginBottom: 15 }}
+      {notifications.length === 0 ? (
+        <div style={{ color: "#aaa", textAlign: "center" }}>
+          No notifications
+        </div>
+      ) : (
+        <List
+          dataSource={notifications}
+          renderItem={(item) => (
+            <List.Item
+                onClick={() => {
+                    router.push(`/leads?open=${item.id}`);
+                }}
+                style={{
+                    borderBottom: "1px solid #1f2937",
+                    padding: "10px 5px",
+                    cursor: "pointer",
+                }}
+            >
+              <div>
+                <b style={{ color: "#fff" }}>{item.name}</b>
+                <br />
+                <small style={{ color: "#9ca3af" }}>
+                  {item.type === "today" ? "Today Followup" : "Overdue"}
+                </small>
+                <br />
+                <Tag
+                  color={item.type === "today" ? "green" : "red"}
+                  style={{ marginTop: 5 }}
+                >
+                  {item.date}
+                </Tag>
+              </div>
+            </List.Item>
+          )}
         />
-
-        <Button
-          type="primary"
-          block
-          onClick={handleSubmit}
-        >
-          Send Reset Link
-        </Button>
-
-      </Card>
+      )}
     </div>
   );
+
+  // 👤 Profile dropdown
+  const profileMenu = [
+    {
+      key: "1",
+      label: (
+        <div>
+          <b>{name}</b>
+          <br />
+          <small style={{ color: "#888" }}>{role}</small>
+        </div>
+      ),
+      icon: <UserOutlined />,
+    },
+    {
+      key: "2",
+      label: <span onClick={handleLogout}>Logout</span>,
+      icon: <LogoutOutlined />,
+      danger: true,
+    },
+  ];
+
+  return (
+    <Header
+      style={{
+        marginLeft: 230,
+        background: "#0f172a", // 🔥 DARK THEME
+        display: "flex",
+        justifyContent: "flex-end",
+        alignItems: "center",
+        padding: "0 20px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+      }}
+    >
+      {/* 🔔 Notification */}
+        <div style={{ position: "relative", marginRight: 25 }}>
+  <Dropdown overlay={notificationDropdown} trigger={["click"]}>
+    <Badge count={notifications.length} offset={[-5, 5]}>
+      <BellOutlined
+        style={{
+          fontSize: 20,
+          cursor: "pointer",
+          color: "#fff",
+        }}
+      />
+    </Badge>
+  </Dropdown>
+</div>
+
+      {/* 👤 Profile */}
+      <Dropdown menu={{ items: profileMenu }} trigger={["click"]}>
+        <div
+          style={{
+            cursor: "pointer",
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <UserOutlined />
+          <span>{name}</span>
+          <small style={{ color: "#9ca3af" }}>({role})</small>
+        </div>
+      </Dropdown>
+    </Header>
+  );
 }
-
-..........................................................................
-Step 5 
-pages/login.js
-login button के नीचे add करो:
-
-<div
-  style={{
-    marginTop: 10,
-    textAlign: "right",
-  }}
->
-  <span
-    onClick={() => router.push("/forgot-password")}
-    style={{
-      color: "#1677ff",
-      cursor: "pointer",
-      fontSize: 13,
-    }}
-  >
-    Forgot Password?
-  </span>
-</div>
-..........................................................................
-
-.catch((err) => {
-
-  console.log(err);
-
-  // 🔥 PASSWORD ERROR
-  if (err.response?.data?.password) {
-
-    message.error(
-      err.response.data.password[0]
-    );
-
-  } else {
-
-    message.error(
-      "Password must contain:\n" +
-      "• Minimum 8 characters\n" +
-      "• 1 Capital Letter\n" +
-      "• 1 Number\n" +
-      "• 1 Special Character"
-    );
-  }
-});
-........................................................
-<div
-  style={{
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 15,
-  }}
->
-  Password must contain:
-  <br />
-  • Minimum 8 characters
-  <br />
-  • 1 Capital letter
-  <br />
-  • 1 Number
-  <br />
-  • 1 Special character
-</div>
-
-................................................................
-<Input.Password
-  placeholder="Password"
-  value={form.password}
-  style={{
-    marginBottom: 12,
-    border: passwordError
-      ? "1px solid red"
-      : "",
-  }}
-  onChange={(e) => {
-
-    setForm({
-      ...form,
-      password: e.target.value,
-    });
-
-    // 🔥 remove red border while typing
-    setPasswordError(false);
-
-  }}
-/>
-
-{showRules && (
-  <div
-    style={{
-      fontSize: 12,
-      color: "#f30b0b",
-      marginBottom: 15,
-    }}
-  >
-    Password must contain:
-    <br />
-    • Minimum 8 characters
-    <br />
-    • 1 Capital letter
-    <br />
-    • 1 Number
-    <br />
-    • 1 Special character
-  </div>
-)}
-........................................................
-.catch((err) => {
-
-  console.log(err);
-
-  // 🔥 password validation error
-  if (err.response?.data?.password) {
-
-    setPasswordError(true);
-    setShowRules(true);
-
-    message.error(
-      err.response.data.password[0]
-    );
-
-  } else {
-
-    message.error("Signup failed");
-  }
-});
