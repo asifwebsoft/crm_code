@@ -162,3 +162,27 @@ login button के नीचे add करो:
     Forgot Password?
   </span>
 </div>
+..........................................................................
+
+.catch((err) => {
+
+  console.log(err);
+
+  // 🔥 PASSWORD ERROR
+  if (err.response?.data?.password) {
+
+    message.error(
+      err.response.data.password[0]
+    );
+
+  } else {
+
+    message.error(
+      "Password must contain:\n" +
+      "• Minimum 8 characters\n" +
+      "• 1 Capital Letter\n" +
+      "• 1 Number\n" +
+      "• 1 Special Character"
+    );
+  }
+});
