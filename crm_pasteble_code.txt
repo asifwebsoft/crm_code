@@ -247,3 +247,23 @@ login button के नीचे add करो:
     • 1 Special character
   </div>
 )}
+........................................................
+.catch((err) => {
+
+  console.log(err);
+
+  // 🔥 password validation error
+  if (err.response?.data?.password) {
+
+    setPasswordError(true);
+    setShowRules(true);
+
+    message.error(
+      err.response.data.password[0]
+    );
+
+  } else {
+
+    message.error("Signup failed");
+  }
+});
