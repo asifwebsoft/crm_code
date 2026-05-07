@@ -1,48 +1,110 @@
-step - 1 
-pages/signup.js full code
+Step 1
+SignupSerializer के अंदर ये function add करो:
+
+def validate_password(self, value):
+
+    # 🔥 Minimum 8 chars
+    if len(value) < 8:
+        raise serializers.ValidationError(
+            "Password must be at least 8 characters"
+        )
+
+    # 🔥 1 uppercase
+    if not re.search(r"[A-Z]", value):
+        raise serializers.ValidationError(
+            "Password must contain 1 capital letter"
+        )
+
+    # 🔥 1 number
+    if not re.search(r"\d", value):
+        raise serializers.ValidationError(
+            "Password must contain 1 number"
+        )
+
+    # 🔥 1 special char
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", value):
+        raise serializers.ValidationError(
+            "Password must contain 1 special character"
+        )
+
+    return value
+.......................................................................
+
+Step 2
+accounts/views.py
+imports में add करो:
+
+from django.core.mail import send_mail
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+
+bottom me add
+# ✅ FORGOT PASSWORD
+class ForgotPasswordView(APIView):
+
+    def post(self, request):
+
+        email = request.data.get("email")
+
+        user = User.objects.filter(email=email).first()
+
+        if not user:
+            return Response(
+                {"error": "Email not found"},
+                status=404
+            )
+
+        token = default_token_generator.make_token(user)
+
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+        reset_link = f"http://localhost:3000/reset-password/{uid}/{token}"
+
+        send_mail(
+            "Reset Your Password",
+            f"Click here to reset password:\n{reset_link}",
+            "noreply@crm.com",
+            [email],
+            fail_silently=False,
+        )
+
+        return Response({
+            "message": "Reset link sent to email"
+        })
+
+.......................................................................
+Step 3
+accounts/urls.py
+import में add करो:
+
+ForgotPasswordView
+path(
+    "forgot-password/",
+    ForgotPasswordView.as_view()
+),
+......................................................................
+Step 4 Frontend
+pages/forgot-password.js new file
 
 import { useState } from "react";
 import { Card, Input, Button, message } from "antd";
-import { useRouter } from "next/router";
 import API from "../services/api";
 
-export default function Signup() {
+export default function ForgotPassword() {
 
-  const router = useRouter();
+  const [email, setEmail] = useState("");
 
-  const [form, setForm] = useState({
-    full_name: "",
-    email: "",
-    mobile: "",
-    password: "",
-  });
+  const handleSubmit = () => {
 
-  const handleSignup = () => {
-
-    if (
-      !form.full_name ||
-      !form.email ||
-      !form.mobile ||
-      !form.password
-    ) {
-      message.error("Please fill all fields");
-      return;
-    }
-
-    API.post("/accounts/admin-signup/", form)
+    API.post("/accounts/forgot-password/", {
+      email,
+    })
       .then(() => {
-
-        message.success("Company Admin Created");
-
-        // 🔥 LOGIN PAGE
-        router.push("/login");
-
+        message.success("Reset link sent");
       })
-      .catch((err) => {
-
-        console.log(err);
-
-        message.error("Signup failed");
+      .catch(() => {
+        message.error("Email not found");
       });
   };
 
@@ -51,119 +113,52 @@ export default function Signup() {
       style={{
         display: "flex",
         justifyContent: "center",
-        alignItems: "center",
-        minHeight: "100vh",
-        background: "#f5f5f5",
+        marginTop: 100,
       }}
     >
-      <Card
-        title="Create Company Account"
-        style={{
-          width: 400,
-          borderRadius: 12,
-        }}
-      >
+      <Card title="Forgot Password" style={{ width: 350 }}>
 
         <Input
-          placeholder="Full Name"
-          style={{ marginBottom: 12 }}
-          value={form.full_name}
+          placeholder="Enter Email"
+          value={email}
           onChange={(e) =>
-            setForm({
-              ...form,
-              full_name: e.target.value,
-            })
+            setEmail(e.target.value)
           }
-        />
-
-        <Input
-          placeholder="Email"
-          style={{ marginBottom: 12 }}
-          value={form.email}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              email: e.target.value,
-            })
-          }
-        />
-
-        <Input
-          placeholder="Mobile"
-          style={{ marginBottom: 12 }}
-          value={form.mobile}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              mobile: e.target.value,
-            })
-          }
-        />
-
-        <Input.Password
-          placeholder="Password"
-          style={{ marginBottom: 12 }}
-          value={form.password}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              password: e.target.value,
-            })
-          }
+          style={{ marginBottom: 15 }}
         />
 
         <Button
           type="primary"
           block
-          size="large"
-          onClick={handleSignup}
+          onClick={handleSubmit}
         >
-          Create Company Account
+          Send Reset Link
         </Button>
-
-        <div
-          style={{
-            marginTop: 15,
-            textAlign: "center",
-          }}
-        >
-          Already have account?{" "}
-          <span
-            onClick={() => router.push("/login")}
-            style={{
-              color: "#1677ff",
-              cursor: "pointer",
-            }}
-          >
-            Login
-          </span>
-        </div>
 
       </Card>
     </div>
   );
 }
 
-.................................................................
-Step -2
+..........................................................................
+Step 5 
 pages/login.js
-
 login button के नीचे add करो:
 
 <div
   style={{
-    marginTop: 15,
-    textAlign: "center",
+    marginTop: 10,
+    textAlign: "right",
   }}
 >
-  New Company?{" "}
   <span
-    onClick={() => router.push("/signup")}
+    onClick={() => router.push("/forgot-password")}
     style={{
       color: "#1677ff",
       cursor: "pointer",
+      fontSize: 13,
     }}
   >
-    Create Account
+    Forgot Password?
   </span>
 </div>
