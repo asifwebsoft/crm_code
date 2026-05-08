@@ -1,402 +1,100 @@
 import { useEffect, useState } from "react";
-
-import {
-  Card,
-  Row,
-  Col,
-  Progress,
-  Table,
-  Tag,
-} from "antd";
-
+import { Card, Row, Col, Button, Tag, Empty, Spin } from "antd";
 import API from "../services/api";
-
 import MainLayout from "../components/Layout";
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
+export default function Followups() {
+  const [data, setData] = useState({
+    today: [],
+    overdue: [],
+    upcoming: [],
+  });
 
-const COLORS = [
-  "#6366F1",
-  "#22C55E",
-  "#F59E0B",
-  "#EF4444",
-  "#06B6D4",
-  "#8B5CF6",
-];
+  const [loading, setLoading] = useState(true);
 
-export default function Conversion() {
-
-  const [data, setData] = useState([]);
-
-  const [isMobile, setIsMobile] =
-    useState(false);
-
-  // 🔥 LOAD DATA
   useEffect(() => {
-
-    API.get("/leads/team-performance/")
-
+    API.get("/leads/followups/")
       .then((res) => {
+        console.log("FOLLOWUP DATA:", res.data); // 🔥 DEBUG
 
-        // 🔥 SAFE SORT
-        const sorted =
-          res.data.sort(
-            (a, b) =>
-              b.conversion -
-              a.conversion
-          );
-
-        setData(sorted);
-
+        setData({
+          today: res.data?.today || [],
+          overdue: res.data?.overdue || [],
+          upcoming: res.data?.upcoming || [],
+        });
       })
-
-      .catch((err) =>
-        console.log(err)
-      );
-
+      .catch((err) => console.log(err))
+      .finally(() => setLoading(false));
   }, []);
 
-  // 📱 MOBILE CHECK
-  useEffect(() => {
+  const renderCard = (lead, color) => (
+    <Card
+      key={lead.id}
+      style={{
+        marginBottom: 12,
+        borderRadius: 10,
+      }}
+    >
+      {/* 🔥 SAFE DATA DISPLAY */}
+      <h3 style={{ marginBottom: 5 }}>
+        {lead?.name || "No Name"}
+      </h3>
 
-    if (typeof window !== "undefined") {
+      <p style={{ marginBottom: 5 }}>
+        {lead?.phone || "No Phone"}
+      </p>
 
-      const checkScreen = () => {
-        setIsMobile(
-          window.innerWidth < 768
-        );
-      };
+      <Tag color={color}>
+        {lead?.date || "No Date"}
+      </Tag>
 
-      checkScreen();
-
-      window.addEventListener(
-        "resize",
-        checkScreen
-      );
-
-      return () => {
-        window.removeEventListener(
-          "resize",
-          checkScreen
-        );
-      };
-    }
-
-  }, []);
-
-  // 🏆 BADGES
-  const getBadge = (index) => {
-
-    if (index === 0)
-      return (
-        <Tag color="gold">
-          🥇 Top Performer
-        </Tag>
-      );
-
-    if (index === 1)
-      return (
-        <Tag color="silver">
-          🥈
-        </Tag>
-      );
-
-    if (index === 2)
-      return (
-        <Tag color="orange">
-          🥉
-        </Tag>
-      );
-
-    return null;
-  };
-
-  // 🔥 TABLE
-  const columns = [
-    {
-      title: "Rank",
-      render: (_, __, index) =>
-        index + 1,
-      width: 70,
-    },
-
-    {
-      title: "Name",
-      render: (
-        _,
-        record,
-        index
-      ) => (
-        <>
-          {record.name}{" "}
-          {getBadge(index)}
-        </>
-      ),
-    },
-
-    {
-      title: "Total Leads",
-      dataIndex: "total",
-    },
-
-    {
-      title: "Closed",
-      dataIndex: "closed",
-    },
-
-    {
-      title: "Conversion %",
-      dataIndex: "conversion",
-
-      render: (val) => (
-        <b>{val}%</b>
-      ),
-    },
-  ];
-
-  return (
-
-    <MainLayout>
-
-      <div
+      <Button
         style={{
-          padding: isMobile
-            ? 5
-            : 10,
+          marginTop: 10,
+          width: "100%",
+          background: "#25D366",
+          color: "#fff",
+          borderRadius: 6,
+        }}
+        onClick={() => {
+          const msg = `Hi ${lead?.name || ""}, just following up with you.`;
 
-          overflowX: "hidden",
+          window.open(
+            `https://wa.me/${lead?.phone}?text=${encodeURIComponent(msg)}`
+          );
         }}
       >
+        WhatsApp Followup
+      </Button>
+    </Card>
+  );
 
-        {/* 🔥 PAGE TITLE */}
-        <h2
-          style={{
-            fontSize:
-              isMobile ? 24 : 32,
+  const renderSection = (title, list, color) => (
+    <Col xs={24} md={8}>
+      <h3 style={{ marginBottom: 15 }}>{title}</h3>
 
-            fontWeight: "bold",
+      {list && list.length > 0 ? (
+        list.map((l) => renderCard(l, color))
+      ) : (
+        <Empty description="No followups" />
+      )}
+    </Col>
+  );
 
-            marginBottom: 20,
-          }}
-        >
-          🔥 Conversion Dashboard
-        </h2>
+  return (
+    <MainLayout>
+      <h2 style={{ marginBottom: 20 }}>Follow Ups</h2>
 
-        {/* 🔥 CARDS */}
-        <Row gutter={[16, 16]}>
-
-          {data.map((item, i) => (
-
-            <Col
-              xs={24}
-              sm={12}
-              md={12}
-              lg={8}
-              key={i}
-            >
-
-              <Card
-                hoverable
-                style={{
-                  border:
-                    i === 0
-                      ? "2px solid gold"
-                      : i === 1
-                      ? "2px solid silver"
-                      : i === 2
-                      ? "2px solid orange"
-                      : "1px solid #eee",
-
-                  borderRadius: 16,
-
-                  boxShadow:
-                    "0 4px 12px rgba(0,0,0,0.06)",
-
-                  height: "100%",
-                }}
-              >
-
-                <h3
-                  style={{
-                    marginBottom: 15,
-                    wordBreak:
-                      "break-word",
-                  }}
-                >
-                  {item.name}{" "}
-                  {getBadge(i)}
-                </h3>
-
-                <p>
-                  <b>Total:</b>{" "}
-                  {item.total}
-                </p>
-
-                <p>
-                  <b>Closed:</b>{" "}
-                  {item.closed}
-                </p>
-
-                <Progress
-                  percent={
-                    item.conversion
-                  }
-
-                  strokeColor={
-                    i === 0
-                      ? "#FFD700"
-                      : COLORS[
-                          i %
-                            COLORS.length
-                        ]
-                  }
-                />
-
-              </Card>
-
-            </Col>
-
-          ))}
-
+      {/* 🔥 LOADING FIX */}
+      {loading ? (
+        <Spin size="large" />
+      ) : (
+        <Row gutter={16}>
+          {renderSection("Today", data.today, "blue")}
+          {renderSection("Overdue", data.overdue, "red")}
+          {renderSection("Upcoming", data.upcoming, "green")}
         </Row>
-
-        {/* 🔥 TABLE */}
-        <h2
-          style={{
-            marginTop: 35,
-            marginBottom: 15,
-            fontSize:
-              isMobile ? 22 : 28,
-          }}
-        >
-          🏆 Leaderboard
-        </h2>
-
-        <Card
-          style={{
-            borderRadius: 16,
-            overflow: "hidden",
-          }}
-        >
-
-          <Table
-            dataSource={data}
-            columns={columns}
-            rowKey={(r) => r.name}
-            pagination={false}
-
-            scroll={{
-              x: true,
-            }}
-          />
-
-        </Card>
-
-        {/* 🔥 CHART */}
-        <h2
-          style={{
-            marginTop: 35,
-            marginBottom: 15,
-            fontSize:
-              isMobile ? 22 : 28,
-          }}
-        >
-          📊 Performance Chart
-        </h2>
-
-        <Card
-          style={{
-            borderRadius: 16,
-          }}
-        >
-
-          <div
-            style={{
-              width: "100%",
-              height: isMobile
-                ? 280
-                : 350,
-            }}
-          >
-
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-            >
-
-              <BarChart
-                data={data}
-              >
-
-                <XAxis
-                  dataKey="name"
-
-                  tick={{
-                    fontSize:
-                      isMobile
-                        ? 10
-                        : 12,
-                  }}
-                />
-
-                <YAxis />
-
-                <Tooltip />
-
-                <Bar
-                  dataKey="conversion"
-
-                  radius={[
-                    10,
-                    10,
-                    0,
-                    0,
-                  ]}
-                >
-
-                  {data.map(
-                    (
-                      entry,
-                      index
-                    ) => (
-
-                      <Cell
-                        key={`cell-${index}`}
-
-                        fill={
-                          index === 0
-                            ? "#FFD700"
-                            : COLORS[
-                                index %
-                                  COLORS.length
-                              ]
-                        }
-                      />
-
-                    )
-                  )}
-
-                </Bar>
-
-              </BarChart>
-
-            </ResponsiveContainer>
-
-          </div>
-
-        </Card>
-
-      </div>
-
+      )}
     </MainLayout>
-
   );
 }
