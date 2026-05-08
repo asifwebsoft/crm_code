@@ -1,149 +1,336 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+sidebar
 
-import razorpay
-from django.conf import settings
-from django.utils.timezone import now
-from datetime import timedelta
+import { Layout, Button, Drawer, Menu } from "antd";
+import {
+  DashboardOutlined,
+  UserOutlined,
+  LineChartOutlined,
+  TeamOutlined,
+  UserAddOutlined,
+  HistoryOutlined,
+  CalendarOutlined,
+  UsergroupAddOutlined,
+  LogoutOutlined
+} from "@ant-design/icons";
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
 
-from .models import Subscription
+const { Sider } = Layout;
 
+export default function Sidebar() {
+  const router = useRouter();
+  const [role, setRole] = useState(null);
+  const [mobileOpen, setMobileOpen] = useRouter(false);
+  const isMobile = 
+  typeof window !== "undefined"
+  ? window.innerWidth < 768 : false;
 
-# 🔥 PLAN CONFIG
-PLAN_DETAILS = {
-    "basic": {
-        "price": 199,
-        "days": 30
-    },
-    "pro": {
-        "price": 499,
-        "days": 90
-    },
-    "advance": {
-        "price": 799,
-        "days": 365
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setRole(localStorage.getItem("role"));
     }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = "/login";
+  };
+
+  // 🔥 BASE MENU (ALL USERS)
+  let items = [
+    {
+      key: "/dashboard",
+      icon: <DashboardOutlined />,
+      label: "Dashboard",
+    },
+    {
+      key: "/leads",
+      icon: <UserOutlined />,
+      label: "Leads",
+    },
+    {
+      key: "/conversion",
+      icon: <LineChartOutlined />,
+      label: "Conversion",
+    },
+    {
+      key: "/followups",
+      icon: <CalendarOutlined />,
+      label: "Follow Ups",
+    }
+  ];
+
+  // 👑 ADMIN MENU
+  if (role === "admin") {
+    items.push(
+      {
+        key: "/team-performance",
+        icon: <LineChartOutlined />,
+        label: "Team Performance",
+      },
+      {
+        key: "/login-activity",
+        icon: <HistoryOutlined />,
+        label: "Login Activity",
+      },
+      {
+        key: "/staff",
+        icon: <TeamOutlined />,
+        label: "Staff",
+      },
+      {
+        key: "/add-staff",
+        icon: <UserAddOutlined />,
+        label: "Add Staff",
+      }
+    );
+  }
+
+  // 🧑‍💼 MANAGER MENU
+  if (role === "manager") {
+    items.push({
+      key: "/team",
+      icon: <UsergroupAddOutlined />,
+      label: "My Team",
+    });
+
+    
+  }
+
+  // 🔥 LOGOUT
+  items.push({
+    key: "logout",
+    icon: <LogoutOutlined />,
+    label: "Logout",
+    danger: true,
+  });
+
+  return (
+    <Sider
+      width={230}
+      style={{
+        background: "#0f172a",
+        height: "100vh",
+        position: "fixed",
+        left: 0,
+        top: 0,
+        bottom: 0,
+      }}
+    >
+      {/* 🔥 LOGO / BRAND */}
+      <div
+        style={{
+          color: "#fff",
+          fontSize: 20,
+          fontWeight: "bold",
+          textAlign: "center",
+          padding: "20px 0",
+          borderBottom: "1px solid #1e293b",
+        }}
+      >
+        CRM Pro
+      </div>
+
+      {/* 🔥 MENU */}
+      <Menu
+        mode="inline"
+        selectedKeys={[router.pathname]}
+        style={{
+          background: "#0f172a",
+          color: "#fff",
+          borderRight: "none",
+          marginTop: 10,
+        }}
+        items={items}
+        onClick={({ key }) => {
+          if (key === "logout") {
+            handleLogout();
+          } else {
+            router.push(key);
+          }
+        }}
+      />
+    </Sider>
+  );
 }
+................................................................
+topbar
 
+import { useEffect, useState } from "react";
+import { Layout, Badge, Dropdown, List, Tag } from "antd";
+import { useRouter } from "next/router";
+import {
+  BellOutlined,
+  UserOutlined,
+  LogoutOutlined,
+} from "@ant-design/icons";
+import API from "../services/api";
 
-# 🔥 CREATE ORDER
-class CreateOrder(APIView):
-    permission_classes = [IsAuthenticated]
+const { Header } = Layout;
 
-    def post(self, request):
+export default function Topbar() {
+  const router = useRouter();
+  const [notifications, setNotifications] = useState([]);
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("");
+  const [company, setCompany] = useState("");
 
-        # 🔒 Razorpay keys check
-        if not hasattr(settings, "RAZORPAY_KEY_ID") or not hasattr(settings, "RAZORPAY_KEY_SECRET"):
-            return Response({
-                "error": "Razorpay keys missing in settings"
-            }, status=500)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setName(localStorage.getItem("name"));
+      setRole(localStorage.getItem("role"));
+      setCompany(localStorage.getItem("company"));
+    }
 
-        plan = request.data.get("plan")
+      API.get("/leads/notifications/")
+        .then((res) => {
+          setNotifications(res.data.data || []);
+  })
+        .catch((err) => {
 
-        # ❌ invalid plan
-        if plan not in PLAN_DETAILS:
-            return Response({
-                "error": "Invalid plan"
-            }, status=400)
+    // 🔥 subscription users safe
+    if (err.response?.status === 403) {
+      setNotifications([]);
+      return;
+    }
 
-        amount = PLAN_DETAILS[plan]["price"]
+    console.log(err);
+  });
+  }, []);
 
-        try:
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = "/login";
+  };
 
-            client = razorpay.Client(
-                auth=(
-                    settings.RAZORPAY_KEY_ID,
-                    settings.RAZORPAY_KEY_SECRET
-                )
-            )
+  // 🔥 WhatsApp-style notification UI
+  const notificationDropdown = (
+    <div
+      style={{
+        width: 320,
+        maxHeight: 400,
+        overflowY: "auto",
+        background: "#01050f",
+        borderRadius: 10,
+        padding: 10,
+      }}
+    >
+      {notifications.length === 0 ? (
+        <div style={{ color: "#aaa", textAlign: "center" }}>
+          No notifications
+        </div>
+      ) : (
+        <List
+          dataSource={notifications}
+          renderItem={(item) => (
+            <List.Item
+                onClick={() => {
+                    router.push(`/leads?open=${item.id}`);
+                }}
+                style={{
+                    borderBottom: "1px solid #1f2937",
+                    padding: "10px 5px",
+                    cursor: "pointer",
+                }}
+            >
+              <div>
+                <b style={{ color: "#fff" }}>{item.name}</b>
+                <br />
+                <small style={{ color: "#9ca3af" }}>
+                  {item.type === "today" ? "Today Followup" : "Overdue"}
+                </small>
+                <br />
+                <Tag
+                  color={item.type === "today" ? "green" : "red"}
+                  style={{ marginTop: 5 }}
+                >
+                  {item.date}
+                </Tag>
+              </div>
+            </List.Item>
+          )}
+        />
+      )}
+    </div>
+  );
 
-            order = client.order.create({
-                "amount": int(amount * 100),
-                "currency": "INR",
-                "payment_capture": 1
-            })
+  // 👤 Profile dropdown
+  const profileMenu = [
+    {
+      key: "1",
+      label: (
+        <div>
+          <b>{name}</b>
+          <br />
+          <small style={{ color: "#888" }}>{role}</small>
+        </div>
+      ),
+      icon: <UserOutlined />,
+    },
+    {
+      key: "2",
+      label: <span onClick={handleLogout}>Logout</span>,
+      icon: <LogoutOutlined />,
+      danger: true,
+    },
+  ];
 
-            return Response({
-                "success": True,
-                "order_id": order["id"],
-                "amount": amount,
-                "plan": plan,
-                "key": settings.RAZORPAY_KEY_ID
-            })
+  return (
+    <Header
+      style={{
+        marginLeft: window.innerWidth <768 ? 0 : 230,
+        background: "#0f172a", // 🔥 DARK THEME
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "0 20px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+      }}
+    >
+       {/* 🏢 COMPANY NAME */}
+        <div
+          style={{
+            color: "#fff",
+            fontSize: 20,
+            fontWeight: "bold",
+          }}
+        >
+        {company ? `${company} CRM` : "CRM"}
+      </div>
+      {/* 🔔 Notification */}
+        <div style={{ position: "relative", marginRight: 25 }}>
+  <Dropdown overlay={notificationDropdown} trigger={["click"]}>
+    <Badge count={notifications.length} offset={[-5, 5]}>
+      <BellOutlined
+        style={{
+          fontSize: 20,
+          cursor: "pointer",
+          color: "#fff",
+        }}
+      />
+    </Badge>
+  </Dropdown>
+</div>
 
-        except Exception as e:
-
-            print("RAZORPAY ERROR:", str(e))
-
-            return Response({
-                "error": "Unable to create payment order"
-            }, status=500)
-
-
-# 🔥 VERIFY PAYMENT
-class VerifyPayment(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-
-        try:
-
-            client = razorpay.Client(
-                auth=(
-                    settings.RAZORPAY_KEY_ID,
-                    settings.RAZORPAY_KEY_SECRET
-                )
-            )
-
-            data = request.data
-
-            # 🔒 VERIFY SIGNATURE
-            client.utility.verify_payment_signature({
-                "razorpay_order_id": data.get("razorpay_order_id"),
-                "razorpay_payment_id": data.get("razorpay_payment_id"),
-                "razorpay_signature": data.get("razorpay_signature"),
-            })
-
-            plan = data.get("plan")
-
-            # ❌ invalid plan
-            if plan not in PLAN_DETAILS:
-                return Response({
-                    "error": "Invalid plan"
-                }, status=400)
-
-            # 🔥 deactivate old subscription
-            Subscription.objects.filter(
-                user=request.user,
-                is_active=True
-            ).update(is_active=False)
-
-            # 🔥 create new subscription
-            start = now()
-            end = start + timedelta(
-                days=PLAN_DETAILS[plan]["days"]
-            )
-
-            Subscription.objects.create(
-                user=request.user,
-                plan=plan,
-                is_active=True,
-                start_date=start,
-                end_date=end
-            )
-
-            return Response({
-                "success": True,
-                "message": "Subscription activated",
-                "plan": plan,
-                "valid_till": end
-            })
-
-        except Exception as e:
-
-            print("VERIFY ERROR:", str(e))
-
-            return Response({
-                "error": "Payment verification failed"
-            }, status=400)
+      {/* 👤 Profile */}
+      <Dropdown menu={{ items: profileMenu }} trigger={["click"]}>
+        <div
+          style={{
+            cursor: "pointer",
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <UserOutlined />
+          <span>{name}</span>
+          <small style={{ color: "#9ca3af" }}>({role})</small>
+        </div>
+      </Dropdown>
+    </Header>
+  );
+}
