@@ -1,407 +1,146 @@
-dashboard
+conversion
 
 import { useEffect, useState } from "react";
-
-import {
-  Row,
-  Col,
-  Card,
-} from "antd";
-
+import { Card, Row, Col, Progress, Table, Tag } from "antd";
 import API from "../services/api";
-
 import MainLayout from "../components/Layout";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell
+} from "recharts";
 
-export default function Dashboard() {
+const COLORS = [
+  "#6366F1",
+  "#22C55E",
+  "#F59E0B",
+  "#EF4444",
+  "#06B6D4",
+  "#8B5CF6",
+];
 
-  const [data, setData] = useState({});
+export default function Conversion() {
+  const [data, setData] = useState([]);
 
-  const [role, setRole] = useState(null);
-
-  const [isMobile, setIsMobile] = useState(false);
-
-  // 🔥 AUTH + RESPONSIVE
   useEffect(() => {
-
-    if (typeof window !== "undefined") {
-
-      const token =
-        localStorage.getItem("token");
-
-      const userRole =
-        localStorage.getItem("role");
-
-      // 🔒 LOGIN CHECK
-      if (!token) {
-
-        window.location.href = "/login";
-
-      } else {
-
-        setRole(userRole);
-
-      }
-
-      // 📱 MOBILE CHECK
-      const checkScreen = () => {
-        setIsMobile(window.innerWidth < 768);
-      };
-
-      checkScreen();
-
-      window.addEventListener(
-        "resize",
-        checkScreen
-      );
-
-      return () => {
-        window.removeEventListener(
-          "resize",
-          checkScreen
-        );
-      };
-    }
-
-  }, []);
-
-  // 🔥 DASHBOARD API
-  useEffect(() => {
-
-    API.get("/leads/dashboard/")
-
+    API.get("/leads/team-performance/")
       .then((res) => {
-
-        setData(res.data);
-
+        // 🔥 sort already but safety
+        const sorted = res.data.sort(
+          (a, b) => b.conversion - a.conversion
+        );
+        setData(sorted);
       })
-
-      .catch((err) => {
-
-        const error =
-          err.response?.data?.error;
-
-        // 🔥 SUBSCRIPTION
-        if (
-          error ===
-          "No active subscription"
-        ) {
-
-          window.location.href =
-            "/subscription";
-
-        }
-
-        // 🔥 COMPANY
-        else if (
-          error === "No company"
-        ) {
-
-          window.location.href =
-            "/company";
-
-        }
-
-      });
-
+      .catch((err) => console.log(err));
   }, []);
 
-  // 🔥 LOADING
-  if (role === null) return null;
-
-  // 🔥 CARD STYLE
-  const cardStyle = {
-    borderRadius: 16,
-    boxShadow:
-      "0 4px 14px rgba(0,0,0,0.06)",
-    border: "none",
-    height: "100%",
+  // 🔥 BADGE FUNCTION
+  const getBadge = (index) => {
+    if (index === 0) return <Tag color="gold">🥇 Top Performer</Tag>;
+    if (index === 1) return <Tag color="silver">🥈</Tag>;
+    if (index === 2) return <Tag color="orange">🥉</Tag>;
+    return null;
   };
 
-  // 🔥 CARD NUMBER STYLE
-  const numberStyle = {
-    fontSize: isMobile ? 24 : 32,
-    fontWeight: "bold",
-    color: "#1677ff",
-  };
+  // 🔥 TABLE (Leaderboard)
+  const columns = [
+    {
+      title: "Rank",
+      render: (_, __, index) => index + 1,
+    },
+    {
+      title: "Name",
+      render: (_, record, index) => (
+        <>
+          {record.name} {getBadge(index)}
+        </>
+      ),
+    },
+    { title: "Total Leads", dataIndex: "total" },
+    { title: "Closed", dataIndex: "closed" },
+    {
+      title: "Conversion %",
+      dataIndex: "conversion",
+      render: (val) => <b>{val}%</b>,
+    },
+  ];
 
   return (
-
     <MainLayout>
+      <h2>🔥 Conversion Dashboard</h2>
 
-      <div
-        style={{
-          padding: isMobile ? 5 : 10,
-          overflowX: "hidden",
-        }}
-      >
-
-        {/* 🔥 PAGE TITLE */}
-        <h2
-          style={{
-            fontSize:
-              isMobile ? 24 : 32,
-            fontWeight: "bold",
-            marginBottom: 20,
-          }}
-        >
-          Dashboard
-        </h2>
-
-        {/* 🔥 STATS */}
-        <Row gutter={[16, 16]}>
-
-          {/* TOTAL */}
-          <Col
-            xs={24}
-            sm={12}
-            md={12}
-            lg={6}
-          >
-
+      {/* 🔥 CARDS */}
+      <Row gutter={[16, 16]}>
+        {data.map((item, i) => (
+          <Col xs={24} md={8} key={i}>
             <Card
-              style={cardStyle}
+              style={{
+                border:
+                  i === 0
+                    ? "2px solid gold"
+                    : i === 1
+                    ? "2px solid silver"
+                    : i === 2
+                    ? "2px solid orange"
+                    : "1px solid #eee",
+                borderRadius: 12,
+              }}
             >
+              <h3>
+                {item.name} {getBadge(i)}
+              </h3>
 
-              <div
-                style={{
-                  fontSize: 15,
-                  color: "#666",
-                  marginBottom: 10,
-                }}
-              >
-                Total Leads
-              </div>
+              <p>Total: {item.total}</p>
+              <p>Closed: {item.closed}</p>
 
-              <div
-                style={numberStyle}
-              >
-                {data.total_leads || 0}
-              </div>
-
+              <Progress
+                percent={item.conversion}
+                strokeColor={
+                  i === 0 ? "#FFD700" : COLORS[i % COLORS.length]
+                }
+              />
             </Card>
-
           </Col>
+        ))}
+      </Row>
 
-          {/* TODAY */}
-          <Col
-            xs={24}
-            sm={12}
-            md={12}
-            lg={6}
-          >
+      {/* 🔥 LEADERBOARD */}
+      <h2 style={{ marginTop: 30 }}>🏆 Leaderboard</h2>
 
-            <Card
-              style={cardStyle}
-            >
+      <Table
+        dataSource={data}
+        columns={columns}
+        rowKey={(r) => r.name}
+        pagination={false}
+      />
 
-              <div
-                style={{
-                  fontSize: 15,
-                  color: "#666",
-                  marginBottom: 10,
-                }}
-              >
-                Today Followups
-              </div>
+      {/* 🔥 CHART */}
+      <h2 style={{ marginTop: 30 }}>📊 Performance Chart</h2>
 
-              <div
-                style={{
-                  ...numberStyle,
-                  color: "#16a34a",
-                }}
-              >
-                {data.today_followups
-                  ?.length || 0}
-              </div>
+      <ResponsiveContainer width="100%" height={320}>
+        <BarChart data={data}>
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
 
-            </Card>
-
-          </Col>
-
-          {/* UPCOMING */}
-          <Col
-            xs={24}
-            sm={12}
-            md={12}
-            lg={6}
-          >
-
-            <Card
-              style={cardStyle}
-            >
-
-              <div
-                style={{
-                  fontSize: 15,
-                  color: "#666",
-                  marginBottom: 10,
-                }}
-              >
-                Upcoming Followups
-              </div>
-
-              <div
-                style={{
-                  ...numberStyle,
-                  color: "#f59e0b",
-                }}
-              >
-                {data.upcoming_followups
-                  ?.length || 0}
-              </div>
-
-            </Card>
-
-          </Col>
-
-          {/* OVERDUE */}
-          <Col
-            xs={24}
-            sm={12}
-            md={12}
-            lg={6}
-          >
-
-            <Card
-              style={cardStyle}
-            >
-
-              <div
-                style={{
-                  fontSize: 15,
-                  color: "#666",
-                  marginBottom: 10,
-                }}
-              >
-                Overdue Followups
-              </div>
-
-              <div
-                style={{
-                  ...numberStyle,
-                  color: "#dc2626",
-                }}
-              >
-                {data.overdue_followups
-                  ?.length || 0}
-              </div>
-
-            </Card>
-
-          </Col>
-
-        </Row>
-
-        {/* 👑 ADMIN */}
-        {role === "admin" && (
-
-          <Card
-            style={{
-              marginTop: 20,
-              borderRadius: 16,
-              border: "none",
-              boxShadow:
-                "0 4px 14px rgba(0,0,0,0.06)",
-            }}
-          >
-
-            <h3
-              style={{
-                marginBottom: 10,
-              }}
-            >
-              Admin Panel
-            </h3>
-
-            <p
-              style={{
-                color: "#666",
-                margin: 0,
-              }}
-            >
-              Manage staff, leads,
-              analytics and CRM
-              operations.
-            </p>
-
-          </Card>
-
-        )}
-
-        {/* 👨‍💼 MANAGER */}
-        {role === "manager" && (
-
-          <Card
-            style={{
-              marginTop: 20,
-              borderRadius: 16,
-              border: "none",
-              boxShadow:
-                "0 4px 14px rgba(0,0,0,0.06)",
-            }}
-          >
-
-            <h3
-              style={{
-                marginBottom: 10,
-              }}
-            >
-              Manager Panel
-            </h3>
-
-            <p
-              style={{
-                color: "#666",
-                margin: 0,
-              }}
-            >
-              Track your team
-              performance and lead
-              conversions.
-            </p>
-
-          </Card>
-
-        )}
-
-        {/* 👨‍💻 STAFF */}
-        {role === "staff" && (
-
-          <Card
-            style={{
-              marginTop: 20,
-              borderRadius: 16,
-              border: "none",
-              boxShadow:
-                "0 4px 14px rgba(0,0,0,0.06)",
-            }}
-          >
-
-            <h3
-              style={{
-                marginBottom: 10,
-              }}
-            >
-              My Work
-            </h3>
-
-            <p
-              style={{
-                color: "#666",
-                margin: 0,
-              }}
-            >
-              Manage your assigned
-              leads and followups.
-            </p>
-
-          </Card>
-
-        )}
-
-      </div>
-
+          <Bar dataKey="conversion" radius={[10, 10, 0, 0]}>
+            {data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={
+                  index === 0
+                    ? "#FFD700"
+                    : COLORS[index % COLORS.length]
+                }
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </MainLayout>
-
   );
 }
