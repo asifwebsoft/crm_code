@@ -11,3 +11,19 @@ Internal Server Error: /api/subscription/create-order/
 USER: mayank@gmail.com
 Forbidden: /api/leads/notifications/
 [08/May/2026 14:05:45] "GET /api/leads/notifications/ HTTP/1.1" 403 35
+
+......................................................................................
+API.get("/leads/notifications/")
+  .then((res) => {
+    setNotifications(res.data.data || []);
+  })
+  .catch((err) => {
+
+    // 🔥 subscription users safe
+    if (err.response?.status === 403) {
+      setNotifications([]);
+      return;
+    }
+
+    console.log(err);
+  });
