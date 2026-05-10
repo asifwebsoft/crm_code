@@ -1,21 +1,17 @@
-class AdminSignupView(APIView):
-    def post(self, request):
+import axios from "axios";
 
-        try:
-            serializer = SignupSerializer(data=request.data)
+const API = axios.create({
+  baseURL: "https://team-crm-backend.onrender.com/api",
+});
 
-            if serializer.is_valid():
-                user = serializer.save()
-                user.role = "admin"
-                user.save()
+API.interceptors.request.use((req) => {
+  const token = localStorage.getItem("token");
 
-                return Response({"message": "Admin created"})
+  if (token) {
+    req.headers.Authorization = `Bearer ${token}`;
+  }
 
-            return Response({
-                "serializer_error": serializer.errors
-            }, status=400)
+  return req;
+});
 
-        except Exception as e:
-            return Response({
-                "python_error": str(e)
-            }, status=500)
+export default API;
