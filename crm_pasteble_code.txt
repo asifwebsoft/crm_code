@@ -1,84 +1,30 @@
-import { load } from "@cashfreepayments/cashfree-js";
+class CreateOrder(APIView):
 
-const handlePayment = async (plan) => {
+    def post(self, request):
 
-  try {
+        Cashfree.XClientId = settings.CASHFREE_APP_ID
+        Cashfree.XClientSecret = settings.CASHFREE_SECRET_KEY
+        Cashfree.XEnvironment = Cashfree.SANDBOX
 
-    const res = await API.post(
-      "/subscription/create-order/",
-      { plan }
-    );
+        order_id = str(uuid.uuid4())
 
-    console.log("Cashfree Response:", res.data);
+        customer_details = CustomerDetails(
+            customer_id="123",
+            customer_phone="9999999999"
+        )
 
-    const cashfree = await load({
-      mode: "sandbox",
-    });
+        order_meta = OrderMeta(
+            return_url="https://team-crm-roan.vercel.app/payment-success?order_id={order_id}"
+        )
 
-    await cashfree.checkout({
-      paymentSessionId: res.data.payment_session_id,
-      redirectTarget: "_self",
-    });
+        create_order_request = CreateOrderRequest(
+            order_amount=1.0,
+            order_currency="INR",
+            order_id=order_id,
+            customer_details=customer_details,
+            order_meta=order_meta
+        )
 
-  } catch (error) {
+        response = Cashfree().PGCreateOrder(create_order_request)
 
-    console.log(error);
-
-    message.error("Payment Failed");
-  }
-};
-
-return (
-  <MainLayout>
-
-    <Row gutter={20}>
-
-      <Col span={8}>
-        <Card title="Basic">
-          <h2>₹199</h2>
-
-          <Button
-            type="primary"
-            block
-            onClick={() => handlePayment("basic")}
-          >
-            Buy Basic
-          </Button>
-
-        </Card>
-      </Col>
-
-      <Col span={8}>
-        <Card title="Pro">
-          <h2>₹499</h2>
-
-          <Button
-            type="primary"
-            block
-            onClick={() => handlePayment("pro")}
-          >
-            Buy Pro
-          </Button>
-
-        </Card>
-      </Col>
-
-      <Col span={8}>
-        <Card title="Advance">
-          <h2>₹799</h2>
-
-          <Button
-            type="primary"
-            block
-            onClick={() => handlePayment("advance")}
-          >
-            Buy Advance
-          </Button>
-
-        </Card>
-      </Col>
-
-    </Row>
-
-  </MainLayout>
-);
+        return Response(response.data)
