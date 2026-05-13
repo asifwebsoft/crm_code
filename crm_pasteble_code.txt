@@ -1,9 +1,30 @@
-from cashfree_pg.api_client import Cashfree
-from cashfree_pg.models.create_order_request import CreateOrderRequest
-from cashfree_pg.models.customer_details import CustomerDetails
-from cashfree_pg.models.order_meta import OrderMeta
-from cashfree_pg.models.create_order_request_order_meta import CreateOrderRequestOrderMeta
-from django.conf import settings
-from rest_framework.response import Response
-from rest_framework.views import APIView
-import uuid
+class CreateOrder(APIView):
+
+    def post(self, request):
+
+        Cashfree.XClientId = settings.CASHFREE_APP_ID
+        Cashfree.XClientSecret = settings.CASHFREE_SECRET_KEY
+        Cashfree.XEnvironment = Cashfree.SANDBOX
+
+        order_id = str(uuid.uuid4())
+
+        customer_details = CustomerDetails(
+            customer_id="123",
+            customer_phone="9999999999"
+        )
+
+        order_meta = OrderMeta(
+            return_url="https://team-crm-roan.vercel.app/payment-success?order_id={order_id}"
+        )
+
+        create_order_request = CreateOrderRequest(
+            order_amount=1.0,
+            order_currency="INR",
+            order_id=order_id,
+            customer_details=customer_details,
+            order_meta=order_meta
+        )
+
+        response = Cashfree().PGCreateOrder(create_order_request)
+
+        return Response(response.data)
