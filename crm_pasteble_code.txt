@@ -1,71 +1,84 @@
+import { load } from "@cashfreepayments/cashfree-js";
+
 const handlePayment = async (plan) => {
-    if (!window.Razorpay) {
-      alert("Razorpay not loaded");
-      return;
-    }
 
-    try {
-      const res = await API.post("/subscription/create-order/", { plan });
+  try {
 
-      const options = {
-        key: res.data.key,
-        order_id: res.data.order_id,
+    const res = await API.post(
+      "/subscription/create-order/",
+      { plan }
+    );
 
-        handler: async function (response) {
-          await API.post("/subscription/verify/", {
-            ...response,
-            plan,
-          });
+    console.log("Cashfree Response:", res.data);
 
-          message.success("Subscription Activated");
-          window.location.href = "/dashboard";
-        },
-      };
+    const cashfree = await load({
+      mode: "sandbox",
+    });
 
-      const rzp = new window.Razorpay(options);
-      console.log("Razorpay Key:", process.env.NEXT_PUBLIC_RAZORPAY_KEY);
-      console.log("Order Data:", data);
-      console.log("Razorpay Object:", window.Razorpay);
-      rzp.open();
+    await cashfree.checkout({
+      paymentSessionId: res.data.payment_session_id,
+      redirectTarget: "_self",
+    });
 
-    } catch {
-      message.error("Payment Failed");
-    }
-  };
+  } catch (error) {
 
-  return (
-    <MainLayout>
+    console.log(error);
 
-      {/* Razorpay Script */}
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
+    message.error("Payment Failed");
+  }
+};
 
-      <Row gutter={20}>
-        <Col span={8}>
-          <Card title="Basic">
-            <h2>₹199</h2>
-            <Button type="primary" block onClick={() => handlePayment("basic")}>
-              Buy Basic
-            </Button>
-          </Card>
-        </Col>
+return (
+  <MainLayout>
 
-        <Col span={8}>
-          <Card title="Pro">
-            <h2>₹499</h2>
-            <Button type="primary" block onClick={() => handlePayment("pro")}>
-              Buy Pro
-            </Button>
-          </Card>
-        </Col>
+    <Row gutter={20}>
 
-        <Col span={8}>
-          <Card title="Advance">
-            <h2>₹799</h2>
-            <Button type="primary" block onClick={() => handlePayment("advance")}>
-              Buy Advance
-            </Button>
-          </Card>
-        </Col>
-      </Row>
-    </MainLayout>
-  );
+      <Col span={8}>
+        <Card title="Basic">
+          <h2>₹199</h2>
+
+          <Button
+            type="primary"
+            block
+            onClick={() => handlePayment("basic")}
+          >
+            Buy Basic
+          </Button>
+
+        </Card>
+      </Col>
+
+      <Col span={8}>
+        <Card title="Pro">
+          <h2>₹499</h2>
+
+          <Button
+            type="primary"
+            block
+            onClick={() => handlePayment("pro")}
+          >
+            Buy Pro
+          </Button>
+
+        </Card>
+      </Col>
+
+      <Col span={8}>
+        <Card title="Advance">
+          <h2>₹799</h2>
+
+          <Button
+            type="primary"
+            block
+            onClick={() => handlePayment("advance")}
+          >
+            Buy Advance
+          </Button>
+
+        </Card>
+      </Col>
+
+    </Row>
+
+  </MainLayout>
+);
