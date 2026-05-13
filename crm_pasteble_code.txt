@@ -1,34 +1,9 @@
-import traceback
-
-class CreateOrder(APIView):
-
-    def post(self, request):
-
-        try:
-
-            print("KEY:", settings.RAZORPAY_KEY_ID)
-            print("SECRET:", settings.RAZORPAY_KEY_SECRET)
-
-            client = razorpay.Client(auth=(
-                settings.RAZORPAY_KEY_ID,
-                settings.RAZORPAY_KEY_SECRET
-            ))
-
-            data = {
-                "amount": 50000,
-                "currency": "INR",
-                "payment_capture": 1
-            }
-
-            order = client.order.create(data=data)
-
-            return Response(order)
-
-        except Exception as e:
-
-            print("ERROR =", str(e))
-            traceback.print_exc()
-
-            return Response({
-                "error": str(e)
-            }, status=500)
+from cashfree_pg.api_client import Cashfree
+from cashfree_pg.models.create_order_request import CreateOrderRequest
+from cashfree_pg.models.customer_details import CustomerDetails
+from cashfree_pg.models.order_meta import OrderMeta
+from cashfree_pg.models.create_order_request_order_meta import CreateOrderRequestOrderMeta
+from django.conf import settings
+from rest_framework.response import Response
+from rest_framework.views import APIView
+import uuid
